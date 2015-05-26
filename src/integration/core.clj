@@ -145,17 +145,28 @@ Chapter PDF page 192 - 197 Solutions on PDF page 644.
 (defrecord Pow [l r]
   Expressionable (express [_] (list 'Math/pow (express l) (express r))))
 
-(defrecord Mult [l r]
-  Integrateable  (pintegrate [exp] (Mult. (Div. l 2) (Pow. r 2)))
-  Expressionable (express [_] (list '* (express l) (express r))))
+(defrecord Sum [l r]
+  Expressionable (express [_] (list '+ (express l) (express r))))
 
 (defrecord Unbound [letter]
   Integrateable  (pintegrate [exp] (Div. 1/2 (Pow. exp 2)))
   Expressionable (express [_] (symbol letter)))
 
+(defrecord Mult [l r]
+  Integrateable
+  (pintegrate [exp]
+    (condp instance? r
+      Unbound (Mult. (Div. l 2) (Pow. r 2))
+      Pow     (let [unbound (:l r)
+                    exponent (:r r)
+                    expinc   (Sum. exponent 1)]
+                (Mult. (Div. l expinc) (Pow. unbound expinc)))))
+  Expressionable (express [_] (list '* (express l) (express r))))
+
 ; Works with existing definite-integral fn once you've expressed
 
 (println (express (pintegrate (Mult. 3 (Unbound. "x")))))
+(println (express (pintegrate (Mult. 3 (Pow. (Unbound. "x") 4)))))
 
 (run-tests)
 
