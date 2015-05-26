@@ -1,7 +1,8 @@
-(remove-ns 'integration.core)
+;(remove-ns 'integration.core)
 (ns integration.core
   (:require [matchure :refer [defn-match]]
-            [clojure.test :refer :all]))
+            [clojure.test :refer :all]
+            [clojure.pprint :refer [pprint]]))
 
 (defn foo
   "I don't do a whole lot."
@@ -122,6 +123,39 @@ Chapter PDF page 192 - 197 Solutions on PDF page 644.
 (deftest does-definite-integral
   (is (= 5/3 (definite-integral exercise-5-2-1 'x 0 1)))
   (is (= 50N (definite-integral (integrate 'x) 'x 0 10))))
+
+; -----------------------------------------------------------------------------
+; So using actual expressions kind of sucks. Lets try records and protocols.
+
+(defprotocol Integrateable
+  (pintegrate [exp]))
+
+(defprotocol Expressionable
+  (express [exp]))
+
+(extend-type java.lang.Long
+  Expressionable (express [n] n))
+
+(extend-type clojure.lang.Ratio
+  Expressionable (express [n] n))
+
+(defrecord Div [l r]
+  Expressionable (express [_] (list '/ (express l) (express r))))
+
+(defrecord Pow [l r]
+  Expressionable (express [_] (list 'Math/pow (express l) (express r))))
+
+(defrecord Mult [l r]
+  Integrateable  (pintegrate [exp] (Mult. (Div. l 2) (Pow. r 2)))
+  Expressionable (express [_] (list '* (express l) (express r))))
+
+(defrecord Unbound [letter]
+  Integrateable  (pintegrate [exp] (Div. 1/2 (Pow. exp 2)))
+  Expressionable (express [_] (symbol letter)))
+
+; Works with existing definite-integral fn once you've expressed
+
+(println (express (pintegrate (Mult. 3 (Unbound. "x")))))
 
 (run-tests)
 
